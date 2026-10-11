@@ -51,7 +51,8 @@ def generate_quiz_from_text(text):
     Matn:
     {text[:6000]}
     """
-  model = genai.GenerativeModel("gemini-1.5-flash")
+  model = genai.GenerativeModel("gemini-2.5-flash")
+
   response = model.generate_content(prompt)
 
   clean_json = (
