@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -51,14 +52,17 @@ def generate_quiz_from_text(text):
     Matn:
     {text[:6000]}
     """
-  model = genai.GenerativeModel("gemini-1.5-pro")
-
-
+  model = genai.GenerativeModel("gemini-2.0-flash")
   response = model.generate_content(prompt)
 
-  clean_json = (
-      response.text.replace("```json", "").replace("```", "").strip()
-  )
+  text_resp = response.text
+  match = re.search(r"\[\s*\{.*\}\s*\]", text_resp, re.DOTALL)
+  if match:
+    clean_json = match.group(0)
+  else:
+    clean_json = (
+        text_resp.replace("```json", "").replace("```", "").strip()
+    )
   return json.loads(clean_json)
 
 
@@ -109,7 +113,9 @@ async def handle_pages(message: types.Message, state: FSMContext):
 
   data = await state.get_data()
   file_path = data.get("file_path")
-  msg = await message.answer("Sahifalar tahlil qilinmoqda va AI testlar tuzmoqda...")
+  msg = await message.answer(
+      "Sahifalar tahlil qilinmoqda va AI testlar tuzmoqda..."
+  )
 
   try:
     text, total_pages = extract_text_from_pdf(file_path, start_p, end_p)
@@ -134,10 +140,14 @@ async def handle_pages(message: types.Message, state: FSMContext):
       )
 
     await message.answer(
-        "Testlar tayyor! Yana test tuzish uchun yangi PDF yuborishingiz mumkin."
+        "Testlar tayyor! Yana test tuzish uchun yangi PDF yuborishingiz"
+        " mumkin."
     )
   except Exception as e:
-    await message.answer("Test tuzishda xatolik yuz berdi. Qaytadan urinib ko'ring.")
+    print(f"Xatolik tafsiloti: {e}")
+    await message.answer(
+        "Test tuzishda xatolik yuz berdi. Qaytadan urinib ko'ring."
+    )
   finally:
     if os.path.exists(file_path):
       os.remove(file_path)
